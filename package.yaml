@@ -1,0 +1,50 @@
+name: idtags
+version: 0.1.0.0
+category: Simple
+author: aiya000
+maintainer: aiya000 <aiya000.develop@gmail.com>
+copyright: aiya000
+license: MIT
+homepage: https://github.com/aiya000/hs-idtags
+description: (like hasktags) A maintainable parser to make tag files (like ctags)
+synopsis: Makes tag files (like ctags). This respects hasktags!
+
+ghc-options:
+    - -Wall
+    - -Wno-name-shadowing
+    - -Wno-unused-do-bind
+    - -Wno-orphans
+    - -fprint-potential-instances
+    - -fprint-explicit-kinds
+
+dependencies:
+    - base >= 4.7 && < 5
+
+library:
+  source-dirs: src
+
+executables:
+  idtags:
+    main: Main.hs
+    source-dirs: app
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    dependencies: idtags
+
+tests:
+  unit-test:
+    main: DocTest.hs
+    source-dirs:
+      - test/doctest
+      - src
+    dependencies:
+      - doctest
+  integrate-test:
+    main: Tasty.hs
+    source-dirs:
+      - test/tasty
+      - src
+    dependencies:
+      - tasty
