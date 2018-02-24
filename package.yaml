@@ -47,4 +47,7 @@ tests:
       - test/tasty
       - src
     dependencies:
+      - QuickCheck
       - tasty
+      - tasty-discover
+      - tasty-quickcheck
