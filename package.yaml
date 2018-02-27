@@ -39,14 +39,14 @@ executables:
     dependencies: idtags
 
 tests:
-  unit-test:
+  doctest:
     main: DocTest.hs
     source-dirs:
       - test/doctest
       - src
     dependencies:
       - doctest
-  integrate-test:
+  tasty-test:
     main: Tasty.hs
     source-dirs:
       - test/tasty
