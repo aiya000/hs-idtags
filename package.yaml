@@ -56,3 +56,8 @@ tests:
       - tasty
       - tasty-discover
       - tasty-quickcheck
+  liquid-prove:
+    main: Liquid.hs
+    source-dirs:
+      - test/liquidhaskell
+      - src
