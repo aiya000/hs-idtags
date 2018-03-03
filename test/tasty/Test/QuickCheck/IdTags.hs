@@ -1,55 +1,80 @@
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | Expose randomly generatable stuff for the property based test cases ('IdTags.ParserTest' or else)
 module Test.QuickCheck.IdTags
-  (
+  ( DataTypeCode (..)
+  , unDataTypeCode
   ) where
 
+import Data.Semigroup ((<>))
 import Data.Text (Text)
-import System.Random (Random(..), RandomGen(..))
-import Test.QuickCheck (Arbitrary(..), elements, sublistOf, choose)
-import Test.QuickCheck.IdTags.Token (PascalName(..), OperatorName(..), VarName(..))
+import System.Random (Random(..))
+import Test.QuickCheck (Arbitrary(..), Gen, choose)
+import Test.QuickCheck.IdTags.Token (PascalName(..), SignName(..), CamelName(..))
 import qualified Data.Text as T
 
--- | A workaround for the 'Random' orphan instance
-newtype List' a = List' [a]
+-- | Please see 'IdTags.ParserTest.test_parser_parses_data_types' and this 'Random' instance
+data DataTypeCode =
+  -- |
+  -- A type (constructor) but it isn't an operator.
+  -- A data that has zero or more type arguments, like "data Foo" and "data Foo a".
+  --
+  -- Be generated based on 'PascalName' (the type name) and 'CamelName' (the argument names)
+  NonOperatorTypeConstr Text
+  -- |
+  -- A type (constructor) of an operator.
+  -- A data as a type operator, like "data (<!>) a b".
+  --
+  -- Be generated based on 'SignName' (the type name) and 'CamelName' (the argument names)
+  | OperatorTypeConstr Text
+  deriving (Show)
 
-instance (Bounded a, Random a) => Random (List' a) where
-  randomR :: forall g. RandomGen g => (List' a, List' a) -> g -> (List' a, g)
-  randomR (List' xs, List' ys) gen =
-    let randomR' :: a -> a -> (a, g)
-        randomR' = curry $ flip randomR gen
-        zs' :: [(a, g)]
-        zs' = zipWith randomR' xs ys
-    in case zs' of
-        [] -> (List' [], gen)
-        ((z, nextGen):zs) -> (List' (z : map fst zs), nextGen)
+-- | Unwrap a 'Text' from either 'NonOperatorTypeConstr' or 'OperatorTypeConstr'
+unDataTypeCode :: DataTypeCode -> Text
+unDataTypeCode (NonOperatorTypeConstr x) = x
+unDataTypeCode (OperatorTypeConstr    x) = x
 
-  --random :: StdGen -> (List' a, StdGen)
-  random gen = randomR (minBound, maxBound) gen
+instance Bounded DataTypeCode where
+  minBound = NonOperatorTypeConstr $ unPascalName minBound
+  maxBound = OperatorTypeConstr $ unSignName maxBound
 
-instance Bounded a => Bounded (List' a) where
-  minBound = List' []
-  maxBound = List' $ replicate limitedSize maxBound
+instance Random DataTypeCode where
+  randomR (NonOperatorTypeConstr x, NonOperatorTypeConstr y) gen =
+    let (PascalName z, nextGen) = randomR (PascalName x, PascalName y) gen
+    in (NonOperatorTypeConstr z, nextGen)
+  randomR (OperatorTypeConstr x, OperatorTypeConstr y) gen =
+    let (SignName z, nextGen) = randomR (SignName x, SignName y) gen
+    in (OperatorTypeConstr z, nextGen)
+  randomR (NonOperatorTypeConstr x, _) gen = randomR (NonOperatorTypeConstr x, NonOperatorTypeConstr x) gen
+  randomR (OperatorTypeConstr    x, _) gen = randomR (OperatorTypeConstr x, OperatorTypeConstr x) gen
+  random = randomR (minBound, maxBound)
+
+instance Arbitrary DataTypeCode where
+  arbitrary = (,) <$> asTheNonOperator <*> asTheOperator >>= choose
     where
-      -- In this module, I may want finite lists
-      limitedSize = 10000
+      asTheNonOperator :: Gen DataTypeCode
+      asTheNonOperator = do
+        PascalName x <- arbitrary
+        xs <- map unCamelName <$> arbitrary
+        return . NonOperatorTypeConstr $ "data " <> T.unwords (x:xs)
 
+      asTheOperator :: Gen DataTypeCode
+      asTheOperator = do
+        SignName x <- ("(" <>) . (<> ")") <$> arbitrary
+        let x' = T.filter isValidSymbolInIdris x
+        xs <- map unCamelName <$> arbitrary
+        return . NonOperatorTypeConstr $ "data " <> T.unwords (x':xs)
 
--- | A workaround for the 'Random' orphan instance
-newtype Text' = Text' Text
-
-instance Random Text' where
-  randomR (Text' x, Text' y) gen =
-    let x' = T.unpack x
-        y' = T.unpack y
-        (List' randStr, nextGen) = randomR (List' x', List' y') gen
-    in (Text' $ T.pack randStr, nextGen)
-
-  random gen =
-    let List' minimum = minBound
-        List' maximum = maxBound
-        minText = Text' $ T.pack minimum
-        maxText = Text' $ T.pack maximum
-    in randomR (minText, maxText) gen
+-- |
+-- Can be used as a operator token in Idris?
+--
+-- http://docs.idris-lang.org/en/latest/tutorial/typesfuns.html#data-types
+isValidSymbolInIdris :: Char -> Bool
+isValidSymbolInIdris = (`elem` symbols)
+  where
+    symbols = [ ':' , '+' , '-' , '*' , '\\'
+              , '/' , '=' , '.' , '?' , '|'
+              , '&' , '>' , '<' , '!' , '@'
+              , '$' , '%' , '^' , '~' , '#'
+              ]
