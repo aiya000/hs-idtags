@@ -1,7 +1,18 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- | Expect to success the parses
 module IdTags.ParserTest where
 
+import Data.Either (isRight)
+import Data.Text (Text)
+import IdTags.Parser (parse)
+import Test.QuickCheck.IdTags
 import Test.Tasty (TestTree)
+import Test.Tasty.QuickCheck (testProperty)
+
+canBeParsed :: Text -> Bool
+canBeParsed = isRight . parse
+
 
 -- |
 -- `
@@ -19,7 +30,9 @@ import Test.Tasty (TestTree)
 --      ^^^^^^^^^
 -- `
 test_parser_parses_data_types :: [TestTree]
-test_parser_parses_data_types = undefined
+test_parser_parses_data_types =
+  [ testProperty "" $ canBeParsed . unDataTypeCode
+  ]
 
 
 -- |
