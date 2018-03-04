@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- | Expose randomly generatable stuff for the property based test cases ('IdTags.ParserTest' or else)
@@ -8,6 +9,7 @@ module Test.QuickCheck.IdTags
   ) where
 
 import Data.Semigroup ((<>))
+import Data.String.Here (i)
 import Data.Text (Text)
 import System.Random (Random(..))
 import Test.QuickCheck (Arbitrary(..), Gen, choose)
@@ -57,14 +59,14 @@ instance Arbitrary DataTypeCode where
       asTheNonOperator = do
         PascalName x <- arbitrary
         xs <- map unCamelName <$> arbitrary
-        return . NonOperatorTypeConstr $ "data " <> T.unwords (x:xs)
+        return $ NonOperatorTypeConstr [i|data ${T.unwords (x:xs)}|]
 
       asTheOperator :: Gen DataTypeCode
       asTheOperator = do
         SignName x <- ("(" <>) . (<> ")") <$> arbitrary
         let x' = T.filter isValidSymbolInIdris x
         xs <- map unCamelName <$> arbitrary
-        return . NonOperatorTypeConstr $ "data " <> T.unwords (x':xs)
+        return $ NonOperatorTypeConstr [i|data ${T.unwords (x':xs)}|]
 
 -- |
 -- Can be used as a operator token in Idris?
