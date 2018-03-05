@@ -5,7 +5,7 @@ module IdTags.Parser
 
 import Control.Exception.Safe (SomeException)
 import Data.Text (Text)
-import IdTags.AST (AST(..))
+import IdTags.Types (AST(..), ExCtags(..))
 import Text.Parser.Combinators (Parsing(..))
 
 -- | Parse any terms to 'AST' if the term is correct
