@@ -1,5 +1,5 @@
 -- | Expose the abstract syntax tree
-module IdTags.AST
+module IdTags.Types
   ( AST (..)
   ) where
 
