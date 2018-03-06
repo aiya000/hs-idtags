@@ -8,65 +8,52 @@ module Test.QuickCheck.IdTags
   , unDataTypeCode
   ) where
 
-import Data.Semigroup ((<>))
 import Data.String.Here (i)
 import Data.Text (Text)
-import System.Random (Random(..))
-import Test.QuickCheck (Arbitrary(..), Gen, choose)
+import Test.QuickCheck (Arbitrary(..), Gen, oneof, shuffle, sublistOf)
 import Test.QuickCheck.IdTags.Token (PascalName(..), SignName(..), CamelName(..))
 import qualified Data.Text as T
 
 -- | Please see 'IdTags.ParserTest.test_parser_parses_data_types' and this 'Random' instance
-data DataTypeCode =
-  -- |
-  -- A type (constructor) but it isn't an operator.
-  -- A data that has zero or more type arguments, like "data Foo" and "data Foo a".
-  --
-  -- Be generated based on 'PascalName' (the type name) and 'CamelName' (the argument names)
-  NonOperatorTypeConstr Text
-  -- |
-  -- A type (constructor) of an operator.
-  -- A data as a type operator, like "data (<!>) a b".
-  --
-  -- Be generated based on 'SignName' (the type name) and 'CamelName' (the argument names)
-  | OperatorTypeConstr Text
+data DataTypeCode = DataCode Text         -- ^ Like "data Foo", "data Foo a", "data Foo = Bar", "data Foo = Bar | Baz", or "data Foo a b = Bar b a"
+                  | OperatorDataCode Text -- ^ Like "data (<!>) a b", or "data (<!>) a b = Bar a b"
   deriving (Show)
 
--- | Unwrap a 'Text' from either 'NonOperatorTypeConstr' or 'OperatorTypeConstr'
+-- | Unwrap a 'Text' from either 'DataCode' or 'OperatorDataCode'
 unDataTypeCode :: DataTypeCode -> Text
-unDataTypeCode (NonOperatorTypeConstr x) = x
-unDataTypeCode (OperatorTypeConstr    x) = x
-
-instance Bounded DataTypeCode where
-  minBound = NonOperatorTypeConstr $ unPascalName minBound
-  maxBound = OperatorTypeConstr $ unSignName maxBound
-
-instance Random DataTypeCode where
-  randomR (NonOperatorTypeConstr x, NonOperatorTypeConstr y) gen =
-    let (PascalName z, nextGen) = randomR (PascalName x, PascalName y) gen
-    in (NonOperatorTypeConstr z, nextGen)
-  randomR (OperatorTypeConstr x, OperatorTypeConstr y) gen =
-    let (SignName z, nextGen) = randomR (SignName x, SignName y) gen
-    in (OperatorTypeConstr z, nextGen)
-  randomR (NonOperatorTypeConstr x, _) gen = randomR (NonOperatorTypeConstr x, NonOperatorTypeConstr x) gen
-  randomR (OperatorTypeConstr    x, _) gen = randomR (OperatorTypeConstr x, OperatorTypeConstr x) gen
-  random = randomR (minBound, maxBound)
+unDataTypeCode (DataCode x) = x
+unDataTypeCode (OperatorDataCode x) = x
 
 instance Arbitrary DataTypeCode where
-  arbitrary = (,) <$> asTheNonOperator <*> asTheOperator >>= choose
+  arbitrary = oneof [genDataCode, genOperatorDataCode]
     where
-      asTheNonOperator :: Gen DataTypeCode
-      asTheNonOperator = do
+      -- only the one of
+      --              vvvvvvvvv  vvvvvv
+      -- data Foo a b = Bar b a | Baz a
+      genValueConstr :: [Text] -> Gen Text
+      genValueConstr params = do
+        PascalName x <- arbitrary
+        params' <- shuffle params >>= sublistOf
+        return [i|${x} ${T.unwords params'}|]
+
+      -- vvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+      -- data Foo a b = Bar b a | Baz a
+      genDataCode :: Gen DataTypeCode
+      genDataCode = do
         PascalName x <- arbitrary
         xs <- map unCamelName <$> arbitrary
-        return $ NonOperatorTypeConstr [i|data ${T.unwords (x:xs)}|]
+        v  <- genValueConstr xs
+        return $ DataCode [i|data ${x} ${T.unwords xs} = ${v}|]
 
-      asTheOperator :: Gen DataTypeCode
-      asTheOperator = do
-        SignName x <- ("(" <>) . (<> ")") <$> arbitrary
-        let x' = T.filter isValidSymbolInIdris x
+      -- vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+      -- data (<!>) a b = Bar b a | Baz a
+      genOperatorDataCode :: Gen DataTypeCode
+      genOperatorDataCode = do
+        x  <- T.filter isValidSymbolInIdris . unSignName <$> arbitrary
         xs <- map unCamelName <$> arbitrary
-        return $ NonOperatorTypeConstr [i|data ${T.unwords (x':xs)}|]
+        v  <- genValueConstr xs
+        return $ DataCode [i|data (${x}) ${T.unwords xs} = ${v}|]
+
 
 -- |
 -- Can be used as a operator token in Idris?
