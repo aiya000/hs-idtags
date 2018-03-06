@@ -10,7 +10,7 @@ module Test.QuickCheck.IdTags
 
 import Data.String.Here (i)
 import Data.Text (Text)
-import Test.QuickCheck (Arbitrary(..), Gen, oneof, shuffle, sublistOf)
+import Test.QuickCheck (Arbitrary(..), Gen, oneof, shuffle, sublistOf, listOf)
 import Test.QuickCheck.IdTags.Token (PascalName(..), SignName(..), CamelName(..))
 import qualified Data.Text as T
 
@@ -36,14 +36,24 @@ instance Arbitrary DataTypeCode where
         params' <- shuffle params >>= sublistOf
         return [i|${x} ${T.unwords params'}|]
 
+      -- only
+      --              vvvvvvvvvvvvvvvvv
+      -- data Foo a b = Bar b a | Baz a
+      genValueConstrsClause :: [Text] -> Gen Text
+      genValueConstrsClause params = do
+        xs <- listOf $ genValueConstr params
+        return $ case xs of
+          [] -> ""
+          _  -> [i|= ${T.intercalate " | " xs}|]
+
       -- vvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
       -- data Foo a b = Bar b a | Baz a
       genDataCode :: Gen DataTypeCode
       genDataCode = do
         PascalName x <- arbitrary
         xs <- map unCamelName <$> arbitrary
-        v  <- genValueConstr xs
-        return $ DataCode [i|data ${x} ${T.unwords xs} = ${v}|]
+        vs <- genValueConstrsClause xs
+        return $ DataCode [i|data ${x} ${T.unwords xs} ${vs}|]
 
       -- vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
       -- data (<!>) a b = Bar b a | Baz a
@@ -51,8 +61,8 @@ instance Arbitrary DataTypeCode where
       genOperatorDataCode = do
         x  <- T.filter isValidSymbolInIdris . unSignName <$> arbitrary
         xs <- map unCamelName <$> arbitrary
-        v  <- genValueConstr xs
-        return $ DataCode [i|data (${x}) ${T.unwords xs} = ${v}|]
+        vs <- genValueConstrsClause xs
+        return $ DataCode [i|data (${x}) ${T.unwords xs} ${vs}|]
 
 
 -- |
