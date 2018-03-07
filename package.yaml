@@ -20,12 +20,11 @@ ghc-options:
 dependencies:
     - base >= 4.7 && < 5
     - here
-    - parsers
+    - idris
     - random
     - safe
     - safe-exceptions
     - text
-    - trifecta
 
 library:
   source-dirs: src
