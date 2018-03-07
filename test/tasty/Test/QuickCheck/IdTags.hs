@@ -11,7 +11,7 @@ module Test.QuickCheck.IdTags
 import Data.String.Here (i)
 import Data.Text (Text)
 import Test.QuickCheck (Arbitrary(..), Gen, oneof, shuffle, sublistOf, listOf)
-import Test.QuickCheck.IdTags.Token (PascalName(..), SignName(..), CamelName(..))
+import Test.QuickCheck.IdTags.Tokens (PascalName(..), SignName(..), CamelName(..))
 import qualified Data.Text as T
 
 -- | Please see 'IdTags.ParserTest.test_parser_parses_data_types' and this 'Random' instance

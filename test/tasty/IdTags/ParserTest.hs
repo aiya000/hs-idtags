@@ -21,12 +21,17 @@ canBeParsed = isRight . parse
 -- `
 -- and
 -- `
--- data Foo a
+-- data Foo = Bar
+--      ^^^
+-- `
+-- and
+-- `
+-- data Foo a = Bar a
 --      ^^^^^
 -- `
 -- and
 -- `
--- data (<!>) a b
+-- data (<!>) a b = Bar a b
 --      ^^^^^^^^^
 -- `
 test_parser_parses_data_types :: [TestTree]

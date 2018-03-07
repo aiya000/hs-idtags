@@ -27,7 +27,7 @@
 --        | : | ; | < | = | > | ? | @
 --        | [ | \ | ] | ^ | _ | `
 --        | { | | | } | ~
-module Test.QuickCheck.IdTags.Token
+module Test.QuickCheck.IdTags.Tokens
   ( PascalName (..)
   , CamelName (..)
   , SignName (..)
